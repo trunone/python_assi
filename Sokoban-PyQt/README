@@ -1,0 +1,14 @@
+What? 
+  Sokoban, using Python3 with PyQt. Includes level importing from .slc files.
+Why? 
+  That was my exam test in a high school. :3
+How to use it? 
+  Just turn on Game.py in python3.
+Hotkeys?
+  Oh, yeah, as you've loaded a level, you can use Z button to undo your move and F5 to reset a whole level.
+Version history:
+  0.2: Added .slc import, F5 scene update
+  0.2.1: Added undo action, fixed box collision, removed WASD support 
+  0.2.2: Added move and left-boxes counters, undo action attached to Z button, fixed left-boxes counter
+Author: 
+  Teos Gaudi
