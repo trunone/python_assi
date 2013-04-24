@@ -4,7 +4,7 @@ from PyQt4.QtGui import *
 from PyQt4.QtCore import *
 
 CONST_PIC_PXL = 32
-SCENE_DELAY_TIME = 100
+SCENE_DELAY_TIME = 1
 
 UP = Qt.Key_Up
 DOWN = Qt.Key_Down
@@ -14,8 +14,8 @@ LEFT = Qt.Key_Left
 class SokoScene(QtGui.QGraphicsScene):
     def __init__(self,view,moveLabel,leftLabel):
         super(SokoScene, self).__init__()
-        self.lvl_is_loaded = False
-        self.auto_play = False
+        self.mLvIsLoaded = False
+        self.mAutoPlay = False
         self.view = view
         self.moves = []
         self.moveLabel = moveLabel
@@ -58,7 +58,7 @@ class SokoScene(QtGui.QGraphicsScene):
                     this.setData(0,"place")
                     this.setZValue(-1)
                     self.addItem(this)
-        self.lvl_is_loaded = True
+        self.mLvIsLoaded = True
         self.leftLabel.setNum(len(self.boxes))
         self.setSceneRect(0,0,max(list(map(len,lrows)))*CONST_PIC_PXL,len(lrows)*CONST_PIC_PXL)
         self.update()
@@ -85,7 +85,7 @@ class SokoScene(QtGui.QGraphicsScene):
                 self.moves.append("B")
 
     def keyPressEvent(self,key): ## when a key is pressed
-        if (not self.auto_play) and self.lvl_is_loaded:
+        if (not self.mAutoPlay) and self.mLvIsLoaded:
             self.key_pressed = True
             if key.key() == Qt.Key_F5:
                 self.resetLevel()
@@ -101,20 +101,20 @@ class SokoScene(QtGui.QGraphicsScene):
         self.update
 
     def autoMove(self):
-        if self.autoMoveMode == "Static":
-            if self.autoMoveList != []:
-                self.moveHuman(self.autoMoveList[0])
-                del self.autoMoveList[0]
+        if self.mAutoMoveMode == "Static":
+            if self.mAutoMoveList != []:
+                self.moveHuman(self.mAutoMoveList[0])
+                del self.mAutoMoveList[0]
                 QTimer.singleShot(SCENE_DELAY_TIME, self.autoMove)
             else:
-                self.auto_play = False
-        elif self.autoMoveMode == "Random":
+                self.mAutoPlay = False
+        elif self.mAutoMoveMode == "Random":
             if int(self.moveLabel.text()) < 1000:
                 self.moveHuman(random.choice([UP, DOWN, RIGHT, LEFT]))
                 QTimer.singleShot(SCENE_DELAY_TIME, self.autoMove)
             else:
-                self.auto_play = False
-        elif self.autoMoveMode == "DFS":
+                self.mAutoPlay = False
+        elif self.mAutoMoveMode == "DFS":
             pass
 
     def resetLevel(self):
@@ -140,7 +140,7 @@ class SokoScene(QtGui.QGraphicsScene):
         return True
 
     def undoMove(self):
-        if self.lvl_is_loaded and self.moves:
+        if self.mLvIsLoaded and self.moves:
             box = False
             last_move = self.moves[-1]
             if last_move=="B":
@@ -171,17 +171,17 @@ class SokoScene(QtGui.QGraphicsScene):
         if check:
             self.clear()
             winrar = QGraphicsPixmapItem(QPixmap("Sprites/winrar.png"))
-            self.lvl_is_loaded = False
+            self.mLvIsLoaded = False
             self.addItem(winrar)
             self.setSceneRect(0,0,0,0)
             self.update()
 
     def autoPlay(self, algorithm, level):
-        if self.lvl_is_loaded and not self.key_pressed:
-            self.auto_play = True
-            self.autoMoveMode = algorithm
+        if self.mLvIsLoaded and not self.key_pressed:
+            self.mAutoPlay = True
+            self.mAutoMoveMode = algorithm
             if algorithm == "Static":
-                self.autoMoveList = { \
+                self.mAutoMoveList = { \
                         "1": [],
                         "2": \
                     [ UP, UP, RIGHT, RIGHT, RIGHT, DOWN, DOWN,\
@@ -190,7 +190,7 @@ class SokoScene(QtGui.QGraphicsScene):
                       DOWN, DOWN, RIGHT, RIGHT, UP, RIGHT, DOWN],
                         "3": []
                     }[level]
-                if self.autoMoveList != []:
+                if self.mAutoMoveList != []:
                     QTimer.singleShot(SCENE_DELAY_TIME, self.autoMove)
             else:
                 QTimer.singleShot(SCENE_DELAY_TIME, self.autoMove)

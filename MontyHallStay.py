@@ -22,7 +22,7 @@ def MontyHallStay(N, nDoors):
         p = CreateProblem(nDoors)
         playerChoice = random.randint(0, nDoors-1)
         king_opens = KingOpensDoor(p, playerChoice)
-        
+
         if p[playerChoice] == "princess":
             s += 1
         else:
@@ -37,7 +37,7 @@ def MontyHallChange(N, nDoors):
         playerChoice = random.randint(0, nDoors-1)
         kingOpen = KingOpensDoor(p, playerChoice)
         playerChoice = PlayerChange(p, kingOpen, playerChoice);
-        
+
         if p[playerChoice] == "princess":
             s += 1
         else:
@@ -53,7 +53,7 @@ def MontyHallRandom(N, nDoors):
         kingOpen = KingOpensDoor(p, playerChoice)
         if random.randint(0, 1):
             playerChoice = PlayerChange(p, kingOpen, playerChoice);
-        
+
         if p[playerChoice] == "princess":
             s += 1
         else:

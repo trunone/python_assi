@@ -1,6 +1,7 @@
 from pylab import *
 import math
 import random
+from mpl_toolkits.mplot3d import Axes3D
 
 def NormalizeAngle( angle ):
     while angle < 0:
@@ -32,31 +33,56 @@ class Robot:
         return s
 
 def main():
-    robot1 = Robot(0.0, 0.0, 0.0, 0.1, 5.0)
+    degree = (45.0/180.0)*math.pi
+    robot1 = Robot(0.0, 0.0, degree, 0.5, 0.5)
 
 ##    samples = multivariate_normal([2.0, 2.0], [[1, 0], [0, 1.0]], 1000)
 ##    angles = multivariate_normal([0.0], [5.0], 1000)
-    
-    rand = random.random()
 
-    N = 1000
-    Xc = np.zeros(N)
-    Yc = np.zeros(N)
+    #rand = random.random()
+
+    N = 10000
+    zR = 10.0
+    #Xc = np.zeros(N)
+    #Yc = np.zeros(N)
+    X = np.arange(-1.0, zR, 1/zR)
+    Y = np.arange(-1.0, zR, 1/zR)
+    (X, Y) = np.meshgrid(X, Y)
+    Z = np.zeros((len(X), len(Y)))
 
     for i in range(N):
-        Xc[i] = robot1.x
-        Yc[i] = robot1.y
+        #Xc[i] = robot1.x
+        #Yc[i] = robot1.y
 ##        robot1.Drive(random.uniform(0, 1.0))
 ##        robot1.Turn(random.uniform(0, 2*math.pi))
-        robot1.Drive(1)
-        robot1.Turn(0.5)
+        robot1.Turn(0.0)
+        robot1.Drive(2.0)
+        x_ind = int((robot1.x+1.0) * zR)
+        y_ind = int((robot1.y+1.0) * zR)
+        if(x_ind > 0 and y_ind > 0 and x_ind < len(X) and y_ind < len(Y)):
+            Z[x_ind][y_ind] += 1
 
+        robot1.Turn(0.0)
+        robot1.Drive(6.0)
+        x_ind = int((robot1.x+1.0) * zR)
+        y_ind = int((robot1.y+1.0) * zR)
+        if(x_ind > 0 and y_ind > 0 and x_ind < len(X) and y_ind < len(Y)):
+            Z[x_ind][y_ind] += 1
 
-    fig = figure(1)
-    ax = fig.add_subplot(111)
-##    ax.set_xlim(0.0, 5.0)
+        robot1.x = 0.0
+        robot1.y = 0.0
+        robot1.theta = degree
+
+    figure()
+    cs = contour(X, Y, Z)
+
+    fig = figure()
+    #ax = fig.add_subplot()
+    ax = Axes3D(fig)
+
 ##    ax.set_ylim(0.0, 5.0)
-    ax.plot(Xc, Yc, 'b--.')
+    #ax.plot(Xc, Yc, 'b--.')
+    ax.plot_surface(X, Y, Z, rstride=2, cstride=2, cmap=cm.jet)
 ##    ax.plot(samples[:, 0], samples[:, 1], '.')
     show()
 
