@@ -12,12 +12,13 @@ RIGHT = Qt.Key_Right
 LEFT = Qt.Key_Left
 
 class SokoScene(QtGui.QGraphicsScene):
-    def __init__(self,view,moveLabel,leftLabel):
+    def __init__(self, view, moveLabel, leftLabel):
         super(SokoScene, self).__init__()
-        self.mLvIsLoaded = False
-        self.mAutoPlay = False
-        self.view = view
-        self.moves = []
+        self.LvIsLoaded = False
+        self.AutoPlay = False
+        self.AutoDeque = 0
+        self.View = view
+        self.Moves = []
         self.moveLabel = moveLabel
         self.leftLabel = leftLabel
 
@@ -25,7 +26,7 @@ class SokoScene(QtGui.QGraphicsScene):
         self.clear()
         self.moveLabel.setNum(0)
         self.lvl_on_scene = level
-        self.moves = []
+        self.Moves = []
         lrows = level.split("\n")
         lrows.remove("")
         self.boxes = []
@@ -58,7 +59,13 @@ class SokoScene(QtGui.QGraphicsScene):
                     this.setData(0,"place")
                     this.setZValue(-1)
                     self.addItem(this)
-        self.mLvIsLoaded = True
+                elif box in ("G"):
+                    this = QGraphicsPixmapItem(QPixmap("Sprites/goal.png"))
+                    this.moveBy(boxind*CONST_PIC_PXL,rowind*CONST_PIC_PXL)
+                    this.setData(0,"goal")
+                    this.setZValue(-1)
+                    self.addItem(this)
+        self.LvIsLoaded = True
         self.leftLabel.setNum(len(self.boxes))
         self.setSceneRect(0,0,max(list(map(len,lrows)))*CONST_PIC_PXL,len(lrows)*CONST_PIC_PXL)
         self.update()
@@ -77,19 +84,19 @@ class SokoScene(QtGui.QGraphicsScene):
             obj.moveBy(0,-32)
 
         if flashback:
-            self.moves.pop(-1)
+            self.Moves.pop(-1)
         else:
             if obj.data(0) == "human":
-                self.moves.append(keycode)
+                self.Moves.append(keycode)
             else:
-                self.moves.append("B")
+                self.Moves.append("B")
 
     def keyPressEvent(self,key): ## when a key is pressed
-        if (not self.mAutoPlay) and self.mLvIsLoaded:
+        if (not self.AutoPlay) and self.LvIsLoaded:
             self.key_pressed = True
             if key.key() == Qt.Key_F5:
                 self.resetLevel()
-            elif self.moves and key.key() == Qt.Key_Z:
+            elif self.Moves and key.key() == Qt.Key_Z:
                 self.undoMove()
             elif key.key() in (UP, DOWN, RIGHT, LEFT):
                 self.moveHuman(key.key())
@@ -101,20 +108,29 @@ class SokoScene(QtGui.QGraphicsScene):
         self.update
 
     def autoMove(self):
-        if self.mAutoMoveMode == "Static":
-            if self.mAutoMoveList != []:
-                self.moveHuman(self.mAutoMoveList[0])
-                del self.mAutoMoveList[0]
+        if self.AutoMoveMode == "Static":
+            if self.AutoMoveList != []:
+                self.moveHuman(self.AutoMoveList[0])
+                del self.AutoMoveList[0]
                 QTimer.singleShot(SCENE_DELAY_TIME, self.autoMove)
             else:
-                self.mAutoPlay = False
-        elif self.mAutoMoveMode == "Random":
+                self.AutoPlay = False
+        elif self.AutoMoveMode == "Random":
             if int(self.moveLabel.text()) < 1000:
                 self.moveHuman(random.choice([UP, DOWN, RIGHT, LEFT]))
                 QTimer.singleShot(SCENE_DELAY_TIME, self.autoMove)
             else:
-                self.mAutoPlay = False
-        elif self.mAutoMoveMode == "DFS":
+                self.AutoPlay = False
+        elif self.AutoMoveMode == "DFS":
+            if self.AutoDeque == 0:
+                self.AutoDeque = deque()
+            if self.dude.collidingItems()[0].data(0) != "goal":
+
+                QTimer.singleShot(SCENE_DELAY_TIME, self.autoMove)
+            else:
+                self.AutoDeque = 0
+                self.AutoPlay = False
+        elif self.AutoMoveMode == "BFS":
             pass
 
     def resetLevel(self):
@@ -131,21 +147,19 @@ class SokoScene(QtGui.QGraphicsScene):
                 self.walk(colly[0], key)
                 if colly[0].collidingItems():
                     if colly[0].collidingItems()[0].data(0) in ("wall","box"):
-
                         self.walk(self.dude, key+plus,True)
-
                         self.walk(colly[0], key+plus,True)
                         return False
                 self.checkBoxes()
         return True
 
     def undoMove(self):
-        if self.mLvIsLoaded and self.moves:
+        if self.LvIsLoaded and self.Moves:
             box = False
-            last_move = self.moves[-1]
+            last_move = self.Moves[-1]
             if last_move=="B":
                 box = True
-                last_move = self.moves[-2]
+                last_move = self.Moves[-2]
             plus = -2 if last_move>=RIGHT else 2
             self.walk(self.dude, last_move)
 
@@ -171,17 +185,17 @@ class SokoScene(QtGui.QGraphicsScene):
         if check:
             self.clear()
             winrar = QGraphicsPixmapItem(QPixmap("Sprites/winrar.png"))
-            self.mLvIsLoaded = False
+            self.LvIsLoaded = False
             self.addItem(winrar)
             self.setSceneRect(0,0,0,0)
             self.update()
 
     def autoPlay(self, algorithm, level):
-        if self.mLvIsLoaded and not self.key_pressed:
-            self.mAutoPlay = True
-            self.mAutoMoveMode = algorithm
+        if self.LvIsLoaded and not self.key_pressed:
+            self.AutoPlay = True
+            self.AutoMoveMode = algorithm
             if algorithm == "Static":
-                self.mAutoMoveList = { \
+                self.AutoMoveList = { \
                         "1": [],
                         "2": \
                     [ UP, UP, RIGHT, RIGHT, RIGHT, DOWN, DOWN,\
@@ -190,7 +204,7 @@ class SokoScene(QtGui.QGraphicsScene):
                       DOWN, DOWN, RIGHT, RIGHT, UP, RIGHT, DOWN],
                         "3": []
                     }[level]
-                if self.mAutoMoveList != []:
+                if self.AutoMoveList != []:
                     QTimer.singleShot(SCENE_DELAY_TIME, self.autoMove)
             else:
                 QTimer.singleShot(SCENE_DELAY_TIME, self.autoMove)
