@@ -16,11 +16,11 @@ class SokoScene(QtGui.QGraphicsScene):
         super(SokoScene, self).__init__()
         self.LvIsLoaded = False
         self.AutoPlay = False
-        self.AutoDeque = 0
         self.View = view
         self.Moves = []
         self.moveLabel = moveLabel
         self.leftLabel = leftLabel
+        self.goal = None
 
     def LoadLevel(self,level): ## load the selected level
         self.clear()
@@ -30,10 +30,10 @@ class SokoScene(QtGui.QGraphicsScene):
         lrows = level.split("\n")
         lrows.remove("")
         self.boxes = []
-        self.humanPos = []
-        self.boxesPos = []
         self.key_pressed = False
-        self.dude = QGraphicsPixmapItem(QPixmap("Sprites/guy.png"))
+        self.DFSDeque = None
+        self.player = QGraphicsPixmapItem(QPixmap("Sprites/guy.png"))
+        self.goal = QGraphicsPixmapItem(QPixmap("Sprites/goal.png"))
         for rowind,row in enumerate(lrows):
             for boxind,box in enumerate(row):
                 if box in ("#"):
@@ -41,36 +41,33 @@ class SokoScene(QtGui.QGraphicsScene):
                     this.moveBy(boxind*CONST_PIC_PXL,rowind*CONST_PIC_PXL)
                     this.setData(0,"wall")
                     self.addItem(this)
-                elif box in ("B","$"):
+                elif box in ("B"):
                     this = QGraphicsPixmapItem(QPixmap("Sprites/block.png"))
                     this.moveBy(boxind*CONST_PIC_PXL,rowind*CONST_PIC_PXL)
                     this.setData(0,"box")
                     self.boxes.append(this)
                     self.addItem(this)
-                    self.boxesPos.append([boxind, rowind])
-                elif box in ("H","@","+"):
-                    self.dude.moveBy(boxind*CONST_PIC_PXL,rowind*CONST_PIC_PXL)
-                    self.dude.setData(0,"human")
-                    self.addItem(self.dude)
-                    self.humanPos.append([boxind, rowind])
-                elif box in ("P","."):
+                elif box in ("H"):
+                    self.player.moveBy(boxind*CONST_PIC_PXL,rowind*CONST_PIC_PXL)
+                    self.player.setData(0,"human")
+                    self.addItem(self.player)
+                elif box in ("P"):
                     this = QGraphicsPixmapItem(QPixmap("Sprites/place.png"))
                     this.moveBy(boxind*CONST_PIC_PXL,rowind*CONST_PIC_PXL)
                     this.setData(0,"place")
                     this.setZValue(-1)
                     self.addItem(this)
                 elif box in ("G"):
-                    this = QGraphicsPixmapItem(QPixmap("Sprites/goal.png"))
-                    this.moveBy(boxind*CONST_PIC_PXL,rowind*CONST_PIC_PXL)
-                    this.setData(0,"goal")
-                    this.setZValue(-1)
-                    self.addItem(this)
+                    self.goal.moveBy(boxind*CONST_PIC_PXL,rowind*CONST_PIC_PXL)
+                    self.goal.setData(0,"goal")
+                    self.goal.setZValue(-1)
+                    self.addItem(self.goal)
         self.LvIsLoaded = True
         self.leftLabel.setNum(len(self.boxes))
         self.setSceneRect(0,0,max(list(map(len,lrows)))*CONST_PIC_PXL,len(lrows)*CONST_PIC_PXL)
         self.update()
 
-    def walk(self,obj,keycode,flashback=False): ## move the human
+    def walk(self,obj,keycode,flashback=False): # move the player
         if keycode == LEFT:
             obj.moveBy(-32,0)
 
@@ -91,18 +88,25 @@ class SokoScene(QtGui.QGraphicsScene):
             else:
                 self.Moves.append("B")
 
-    def keyPressEvent(self,key): ## when a key is pressed
+    def keyPressEvent(self, event): ## when a key is pressed
         if (not self.AutoPlay) and self.LvIsLoaded:
             self.key_pressed = True
-            if key.key() == Qt.Key_F5:
+            if event.key() == Qt.Key_F5:
                 self.resetLevel()
-            elif self.Moves and key.key() == Qt.Key_Z:
+            elif self.Moves and event.key() == Qt.Key_Z:
                 self.undoMove()
-            elif key.key() in (UP, DOWN, RIGHT, LEFT):
-                self.moveHuman(key.key())
+            elif event.key() in (UP, DOWN, RIGHT, LEFT):
+                self.movePlayer(event.key())
 
-    def moveHuman(self, key):
-        self.walk(self.dude, key)
+    def mousePressEvent(self, event):
+        if self.goal:
+            x = int(event.buttonDownScenePos(Qt.LeftButton).x()/CONST_PIC_PXL)*CONST_PIC_PXL
+            y = int(event.buttonDownScenePos(Qt.LeftButton).y()/CONST_PIC_PXL)*CONST_PIC_PXL
+            self.goal.setPos(x, y)
+            print((abs(self.goal.x()-self.player.x())/CONST_PIC_PXL)+abs(self.goal.y()-self.player.y())/CONST_PIC_PXL)
+
+    def movePlayer(self, key):
+        self.walk(self.player, key)
         if self.checkGuy(key):
             self.moveLabel.setNum(int(self.moveLabel.text())+1)
         self.update
@@ -110,44 +114,53 @@ class SokoScene(QtGui.QGraphicsScene):
     def autoMove(self):
         if self.AutoMoveMode == "Static":
             if self.AutoMoveList != []:
-                self.moveHuman(self.AutoMoveList[0])
+                self.movePlayer(self.AutoMoveList[0])
                 del self.AutoMoveList[0]
                 QTimer.singleShot(SCENE_DELAY_TIME, self.autoMove)
             else:
                 self.AutoPlay = False
         elif self.AutoMoveMode == "Random":
             if int(self.moveLabel.text()) < 1000:
-                self.moveHuman(random.choice([UP, DOWN, RIGHT, LEFT]))
+                self.movePlayer(random.choice([UP, DOWN, RIGHT, LEFT]))
                 QTimer.singleShot(SCENE_DELAY_TIME, self.autoMove)
             else:
                 self.AutoPlay = False
         elif self.AutoMoveMode == "DFS":
-            if self.AutoDeque == 0:
-                self.AutoDeque = deque()
-            if self.dude.collidingItems()[0].data(0) != "goal":
-
+            if not self.DFSDeque:
+                self.DFSDeque = deque()
+            if self.player.collidingItems()[0].data(0) != "goal":
+                #if not self.DFSDeque
                 QTimer.singleShot(SCENE_DELAY_TIME, self.autoMove)
             else:
-                self.AutoDeque = 0
+                self.DFSDeque = None
                 self.AutoPlay = False
         elif self.AutoMoveMode == "BFS":
+            pass
+        elif self.AutoMoveMode == "A_Star":
+            if self.player.collidingItems()[0].data(0) != "goal":
+                manhattan_dist = \
+                    (abs(self.goal.x()-self.player.x())/CONST_PIC_PXL)+ \
+                    (abs(self.goal.y()-self.player.y())/CONST_PIC_PXL)
+                QTimer.singleShot(SCENE_DELAY_TIME, self.autoMove)
+            else:
+                self.AutoPlay = False
             pass
 
     def resetLevel(self):
         self.LoadLevel(self.lvl_on_scene)
 
     def checkGuy(self,key): ## check and move the human
-        colly = self.dude.collidingItems()
+        colly = self.player.collidingItems()
         plus = -2 if key>=RIGHT else 2
         if colly:
             if colly[0].data(0) == "wall":
-                self.walk(self.dude, key+plus,True)
+                self.walk(self.player, key+plus,True)
                 return False
             elif colly[0].data(0) == "box":
                 self.walk(colly[0], key)
                 if colly[0].collidingItems():
                     if colly[0].collidingItems()[0].data(0) in ("wall","box"):
-                        self.walk(self.dude, key+plus,True)
+                        self.walk(self.player, key+plus,True)
                         self.walk(colly[0], key+plus,True)
                         return False
                 self.checkBoxes()
@@ -161,14 +174,14 @@ class SokoScene(QtGui.QGraphicsScene):
                 box = True
                 last_move = self.Moves[-2]
             plus = -2 if last_move>=RIGHT else 2
-            self.walk(self.dude, last_move)
+            self.walk(self.player, last_move)
 
-            if self.dude.collidingItems() and box:
-                if self.dude.collidingItems()[0].data(0)=="box":
-                    self.walk(self.dude.collidingItems()[0],last_move+plus,True)
+            if self.player.collidingItems() and box:
+                if self.player.collidingItems()[0].data(0)=="box":
+                    self.walk(self.player.collidingItems()[0],last_move+plus,True)
 
             for _ in range(2):
-                self.walk(self.dude,last_move+plus,True)
+                self.walk(self.player,last_move+plus,True)
             self.moveLabel.setNum(int(self.moveLabel.text())-1)
             self.checkBoxes()
             self.update()
@@ -216,7 +229,10 @@ class SokoGame(QtGui.QWidget): ##load GUI file from Forms/GameWindow.ui
         self.SokoScene = SokoScene(self.SokoView,self.moveCount,self.leftCount)
         self.SokoScene.setBackgroundBrush(QtGui.QBrush(QtGui.QPixmap('Sprites/floor.png')))
         self.SokoView.setScene(self.SokoScene)
-        self.SokoView.setRenderHints(QtGui.QPainter.Antialiasing | QtGui.QPainter.SmoothPixmapTransform | QtGui.QPainter.HighQualityAntialiasing)
+        self.SokoView.setRenderHints( \
+                QtGui.QPainter.Antialiasing | \
+                QtGui.QPainter.SmoothPixmapTransform | \
+                QtGui.QPainter.HighQualityAntialiasing)
         self.ExitButton.clicked.connect(sys.exit)
         self.APButton.clicked.connect(lambda: self.SokoScene.autoPlay(self.APBox.currentText(), self.ChooseBox.currentText()))
         self.undoButton.clicked.connect(self.SokoScene.undoMove)
@@ -231,7 +247,7 @@ class SokoGame(QtGui.QWidget): ##load GUI file from Forms/GameWindow.ui
         self.ChooseBox.clear()
         self.level_no.sort()
         self.ChooseBox.addItems(self.level_no)
-        self.APBox.addItems(["Static", "Random", "DFS"])
+        self.APBox.addItems(["Static", "Random", "DFS", "A_Star"])
 
 def main():
     app = QtGui.QApplication(sys.argv)

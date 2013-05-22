@@ -14,14 +14,25 @@ def NormalizeAngle( angle ):
     return angle
 
 def KalmanFilterPredict(motion, x_m, P_m, Q):
-    #(d,t) = motion
-    #nt = NormalizeAngle(t + x_m[2])
-    pass
+    (d,t) = motion
+    nt = NormalizeAngle(t + x_m[2])
+    dx = d*math.cos(nt)
+    dy = d*math.sin(nt)
+    xn = [ x_m[0]+dx, x_m[1]+dy, nt ]
+    Pn = P_m + Q
+    return (xn, Pn)
+
+def KalmanFilterCorrect(sensor, x_u, P_u, R):
+    K = P_u/(P_u + R)
+    diff = (sensor[0]-x_u[0], sensor[1]-x_u[1])
+    nd = (d[0]+x_m[0], d[1]+x_m[1])
+    P = P_m + Q
+    return (nd, nt), P
 
 def KalmanFilterCorrect(sensor, x_u, P_u, sensorVariance):
-    #K = P_u/(P_u) + sensorVariance)
-    #diff = (sensor[0] - x_u[0], sensor[1] - x_u[1])
-    pass
+    K = P_u/(P_u + sensorVariance)
+    diff = (sensor[0]-x_u[0], sensor[1]-x_u[1])
+
 
 class Robot:
     def __init__( self, initPos, varianceDrive, varianceTurn ):
