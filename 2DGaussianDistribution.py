@@ -13,22 +13,6 @@ def NormalizeAngle( angle ):
         angle -= 2*math.pi
     return angle
 
-def KalmanFilterPredict(motion, x_m, P_m, Q):
-    (d,t) = motion
-    nt = NormalizeAngle(t + x_m[2])
-    dx = d*math.cos(nt)
-    dy = d*math.sin(nt)
-    xn = [ x_m[0]+dx, x_m[1]+dy, nt ]
-    Pn = P_m + Q
-    return (xn, Pn)
-
-def KalmanFilterCorrect(sensor, x_u, P_u, R):
-    K = P_u/(P_u + R)
-    diff = (sensor[0]-x_u[0], sensor[1]-x_u[1])
-    nd = (d[0]+x_m[0], d[1]+x_m[1])
-    P = P_m + Q
-    return (nd, nt), P
-
 class Robot:
     def __init__( self, initPos, varianceDrive, varianceTurn ):
         self.theta = initPos[2]
@@ -65,33 +49,36 @@ def main():
     robotIdeal = Robot(initPos, None, None)
     robot1 = Robot(initPos, motionVariance, None)
 
-    N = 50
-    pos = np.zeros((N, 2))
-    pos_ideal = np.zeros((N, 2))
-    pos_sensor = np.zeros((N, 2))
-    pos_kalman = np.zeros((N, 2))
-
-    drive_count = 10
+    N = 1000
+    zR = 10.0
+    X = np.arange(-1.0, zR, 1/zR)
+    Y = np.arange(-1.0, zR, 1/zR)
+    (X, Y) = np.meshgrid(X, Y)
+    Z = np.zeros((len(X), len(Y)))
 
     for i in range(N):
-        pos[i] = robot1.Pos
-        pos_ideal[i] = robotIdeal.Pos
-        err = multivariate_normal([0.0, 0.0], sensorVariance)
-        pos_sensor[i] = [pos[i][0] + err[0], pos[i][1] + err[0]]
+        robot1.Turn(0.0)
+        robot1.Drive(2.0)
+        x_ind = int((robot1.Pos[0]+1.0) * zR)
+        y_ind = int((robot1.Pos[1]+1.0) * zR)
+        if(x_ind > 0 and y_ind > 0 and x_ind < len(X) and y_ind < len(Y)):
+            Z[x_ind][y_ind] += 1
 
-        robot1.Drive(drive_count)
-        robot1.Turn(degree)
-        robotIdeal.Drive(drive_count)
-        robotIdeal.Turn(degree)
+        robot1.Turn(0.0)
+        robot1.Drive(6.0)
+        x_ind = int((robot1.Pos[0]+1.0) * zR)
+        y_ind = int((robot1.Pos[1]+1.0) * zR)
+        if(x_ind > 0 and y_ind > 0 and x_ind < len(X) and y_ind < len(Y)):
+            Z[x_ind][y_ind] += 1
 
-        drive_count += 0.3
+        robot1.Pos[0] = 0.0
+        robot1.Pos[1] = 0.0
+        robot1.theta = degree
 
     fig = figure()
-    ax = fig.add_subplot(111)
-    ax.plot(pos[:,0], pos[:,1], 'bo-')
-    ax.plot(pos_ideal[:,0], pos_ideal[:,1], 'ro-')
-    ax.plot(pos_sensor[:,0], pos_sensor[:,1], 'go-')
-    ax.plot(pos_kalman[:,0], pos_kalman[:,1], 'yo-')
+    cs = contour(X, Y, Z)
+    #ax = Axes3D(fig)
+    #ax.plot_surface(X, Y, Z, rstride=2, cstride=2, cmap=cm.jet)
     show()
 
 if __name__ == "__main__":
