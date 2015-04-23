@@ -12,5 +12,5 @@ def PrintPuzzle(puzzle):
             print(puzzle[i][j], "", end="")
         print("|")
     print("---" * y)
-        
+
 PrintPuzzle(puzzle1)

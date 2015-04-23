@@ -42,13 +42,13 @@ def reverse(list):
     for i in range(len(list)-1, -1, -1):
         s += list[i]
     return s
-	
+
 def reverse3(list):
     if list == "":
         return ""
     else:
         return reverse3(list[1:]) + list[0]
-	
+
 def printMultiplicationTalbe(N):
     print(" " * 4, end="")
     for i in range(1,N+1):
